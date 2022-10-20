@@ -72,8 +72,9 @@ def print_content(ti) -> None:
 with DAG(
     dag_id='bitcoin_data_collector',
     default_args=default_args,
-    schedule_interval='@daily',
-    description='ETL pipeline for processing users big version'
+    schedule_interval='*/1 * * * *',
+    description='ETL pipeline for processing users big version',
+    max_active_runs = 1
 ) as dag:
 
     # Task 1 - Fetch bitcoin data
