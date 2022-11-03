@@ -15,19 +15,23 @@ meta_data = sq.MetaData()
 
 
 def create_table(input_name, input_rate, input_metadata):
-    '''Function to create a separate table for chosen currency'''
+    '''Function to add a separate table for chosen currency to the tables metadata'''
 
     metadata = input_metadata
+
     new_table = sq.Table(
         input_name,
         metadata,
-        sq.Column("id", sq.Text), sq.Column("parent_id", sq.Text), sq.Column("date", sq.Text), sq.Column(f"BTC/{input_rate}", sq.Float)
+            sq.Column("id", sq.Text),
+            sq.Column("parent_id", sq.Text),
+            sq.Column("date", sq.Text),
+            sq.Column(f"BTC/{input_rate}", sq.Float)
     )
     return new_table
 
 
 def create_table_schemas_for_chosen_currencies(currency_list):
-    '''Function to create schemas of required tables'''
+    '''Function to create schemas of required tables according to the currency list'''
 
     currency_table_dict = {currency: create_table(f"bitcoin_price_{currency}", f"{currency}", meta_data) for currency in
                            currency_list}
@@ -84,9 +88,9 @@ def merge_data(source1: list, source2: list, push_key: str, ti) -> None:
     pull_key, task_id = source2
     data_source_currency = ti.xcom_pull(key=pull_key, task_ids=[task_id])[0]
 
-    result = dict()
     currency_list = ti.xcom_pull(key='upload_currency_list', task_ids=['pick_currencies_data'])[0]
 
+    result = dict()
     result['id'] = data_source_currency['id']
     result['date'] = data_source_currency['date']
     for currency in currency_list:
@@ -100,6 +104,7 @@ def load_data(pull_key: str, ti) -> None:
 
     full_pulled_data = ti.xcom_pull(key=pull_key, task_ids=['merge_data'])[0]
     currency_list = ti.xcom_pull(key='upload_currency_list', task_ids=['pick_currencies_data'])[0]
+
     engine = sq.create_engine("sqlite:///bitcoin2.db", echo=True, future=True)
     table_dict = create_table_schemas_for_chosen_currencies(currency_list)
     meta_data.create_all(engine, checkfirst=True)
@@ -120,7 +125,7 @@ def load_data(pull_key: str, ti) -> None:
 
 
 def print_content(ti) -> None:
-    '''Function that prints pushes all the records from the DB - just to supervise'''
+    '''Function that pushes all the records from the DB - just to supervise'''
 
     engine2 = sq.create_engine("sqlite:///bitcoin2.db", echo=True, future=True)
     currency_list = ti.xcom_pull(key='upload_currency_list', task_ids=['pick_currencies_data'])[0]
@@ -134,12 +139,13 @@ def print_content(ti) -> None:
 
 
 def pick_currencies(currency_list, push_key, pull_key, task_id, ti):
-    '''Function to push currency list and use it in the flow'''
+    '''Function to push currency list and to use it later in the flow'''
 
     data_source_currency = ti.xcom_pull(key=pull_key, task_ids=[task_id])[0]
-    currency = set(currency_list) & set(list(data_source_currency['rates']))
-    ti.xcom_push(key=push_key, value=list(currency))
 
+    currency = set(currency_list) & set(list(data_source_currency['rates']))
+
+    ti.xcom_push(key=push_key, value=list(currency))
 
 
 with DAG(
@@ -149,12 +155,6 @@ with DAG(
         description='ETL pipeline for processing users big version',
         max_active_runs=1
 ) as dag:
-    # Task 0.1 - Create table schemas
-    #    task_create_table_schema = PythonOperator(
-    #        task_id='create_table_schemas',
-    #        python_callable=create_table_schemas_for_chosen_currencies,
-    #        op_kwargs={'currency_list': ['USD', 'PLN'], "input_metadata": meta_data}
-    #    )
 
     # Task 0
     task_pick_currencies = PythonOperator(
